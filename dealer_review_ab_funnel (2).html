@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dealer Review Funnel — Interactive A/B Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF8;
+    --surface: #F1EFE8;
+    --card: #FFFFFF;
+    --text: #1C1C1A;
+    --text-secondary: #6B6A65;
+    --text-tertiary: #9C9A92;
+    --border: rgba(0,0,0,0.08);
+    --accent-control: #0F6E56;
+    --accent-control-light: #E1F5EE;
+    --accent-control-mid: #5DCAA5;
+    --accent-variant: #185FA5;
+    --accent-variant-light: #E6F1FB;
+    --accent-variant-border: #3B8BD4;
+    --accent-warn: #EF9F27;
+    --accent-warn-light: #FAEEDA;
+    --danger: #A32D2D;
+    --danger-bar: #F09595;
+    --neutral-bar: #D3D1C7;
+    --input-bg: #FFFFFF;
+    --input-border: rgba(0,0,0,0.15);
+    --input-focus: #185FA5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413;
+      --surface: #1E1E1C;
+      --card: #242422;
+      --text: #E8E6DE;
+      --text-secondary: #A8A69E;
+      --text-tertiary: #6B6A65;
+      --border: rgba(255,255,255,0.08);
+      --accent-control: #5DCAA5;
+      --accent-control-light: #08362B;
+      --accent-control-mid: #1D9E75;
+      --accent-variant: #85B7EB;
+      --accent-variant-light: #0A2E4E;
+      --accent-variant-border: #378ADD;
+      --accent-warn: #EF9F27;
+      --accent-warn-light: #3D2504;
+      --danger: #F09595;
+      --danger-bar: #E24B4A;
+      --neutral-bar: #5F5E5A;
+      --input-bg: #1E1E1C;
+      --input-border: rgba(255,255,255,0.15);
+      --input-focus: #85B7EB;
+    }
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+  .header { margin-bottom: 1.5rem; }
+  .header h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .header p { font-size: 13px; color: var(--text-tertiary); font-family: 'DM Mono', monospace; }
+
+  .toggle-bar {
+    display: flex;
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 1.5rem;
+  }
+  .toggle-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: color 0.25s, background 0.25s, box-shadow 0.25s;
+  }
+  .toggle-btn.active {
+    background: var(--card);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+
+  .input-section {
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 1.5rem;
+  }
+  .input-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .input-section-title { font-size: 14px; font-weight: 600; }
+  .input-hint { font-size: 12px; color: var(--text-tertiary); font-family: 'DM Mono', monospace; }
+  .input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 8px;
+  }
+  .input-cell { display: flex; flex-direction: column; gap: 3px; }
+  .input-cell label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .input-cell input {
+    width: 100%;
+    padding: 7px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -moz-appearance: textfield;
+  }
+  .input-cell input::-webkit-outer-spin-button,
+  .input-cell input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .input-cell input:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px rgba(24,95,165,0.12);
+  }
+  .input-cell.pg2 label { color: var(--accent-warn); }
+  .input-cell.pg2 input { border-color: var(--accent-warn); }
+
+  .page-divider {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .page-divider span {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent-warn);
+    white-space: nowrap;
+  }
+  .page-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--accent-warn);
+    opacity: 0.3;
+  }
+
+  .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .metric {
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .metric-label { font-size: 12px; color: var(--text-tertiary); font-family: 'DM Mono', monospace; margin-bottom: 4px; }
+  .metric-value { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+  .metric-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .metric-value.good { color: var(--accent-control); }
+  .metric-value.bad { color: var(--danger); }
+
+  .chart-wrap {
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 16px 12px;
+    margin-bottom: 1.5rem;
+  }
+  .chart-container { position: relative; width: 100%; height: 340px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary); }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 2px; }
+
+  .table-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .table-title { font-size: 14px; font-weight: 600; }
+  .table-subtitle { font-size: 12px; color: var(--text-tertiary); font-family: 'DM Mono', monospace; }
+  .drop-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) 46px 46px minmax(0, 0.8fr);
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 13px;
+  }
+  .drop-row:last-child { border-bottom: none; }
+  .drop-row .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .drop-row .num { text-align: right; font-weight: 500; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .drop-row .pct { text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .critical { color: var(--danger) !important; }
+  .normal-drop { color: var(--text-secondary); }
+  .bar-track { height: 6px; border-radius: 3px; background: var(--surface); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .bar-fill.critical { background: var(--danger-bar); }
+  .bar-fill.normal { background: var(--neutral-bar); }
+
+  @media (max-width: 600px) {
+    body { padding: 1rem; }
+    .metrics { grid-template-columns: 1fr; }
+    .input-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Dealer review form — A/B funnel</h1>
+  <p>Edit the numbers below to update the analysis in real time</p>
+</div>
+
+<div class="toggle-bar">
+  <button class="toggle-btn active" id="btn-control" onclick="switchView('control')">
+    Control (single page) <span class="tag" id="tag-control"></span>
+  </button>
+  <button class="toggle-btn" id="btn-variant" onclick="switchView('variant')">
+    Variant (2-page) <span class="tag" id="tag-variant"></span>
+  </button>
+</div>
+
+<div class="input-section">
+  <div class="input-section-header">
+    <span class="input-section-title">Funnel data</span>
+    <span class="input-hint">edit any value</span>
+  </div>
+  <div class="input-grid" id="input-grid"></div>
+</div>
+
+<div class="metrics" id="metrics"></div>
+
+<div class="chart-wrap">
+  <div class="legend" id="legend"></div>
+  <div class="chart-container">
+    <canvas id="funnelChart"></canvas>
+  </div>
+</div>
+
+<div class="table-header">
+  <span class="table-title">Step-by-step drop-off</span>
+  <span class="table-subtitle" id="table-sub"></span>
+</div>
+<div id="dropoff-table"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+
+const config = {
+  control: {
+    labels: ['Car available','Rating start','Communication','Price transparency','Condition accuracy','Staff helpfulness','Time at dealership','Financing','Selling/trade-in','Submit'],
+    defaults: [392,385,381,364,358,364,355,352,348,290],
+    pageBreakAfter: null,
+    sections: null
+  },
+  variant: {
+    labels: ['Rating start','Communication','Price transparency','Condition accuracy','Staff helpfulness','Time at dealership','Financing','Selling/trade-in','Car available','Submit'],
+    defaults: [401,396,389,376,380,373,371,370,326,272],
+    pageBreakAfter: 7,
+    sections: ['p1','p1','p1','p1','p1','p1','p1','p1','p2','p2']
+  }
+};
+
+const state = { control: [...config.control.defaults], variant: [...config.variant.defaults] };
+let chart = null;
+let currentView = 'control';
+
+function switchView(view) {
+  currentView = view;
+  document.getElementById('btn-control').classList.toggle('active', view === 'control');
+  document.getElementById('btn-variant').classList.toggle('active', view === 'variant');
+  renderInputs();
+  renderAll();
+}
+
+function renderInputs() {
+  const c = config[currentView];
+  const vals = state[currentView];
+  let html = '';
+  for (let i = 0; i < c.labels.length; i++) {
+    if (c.pageBreakAfter !== null && i === c.pageBreakAfter + 1) {
+      html += '<div class="page-divider"><span>page 2 starts here</span></div>';
+    }
+    const isPg2 = c.sections && c.sections[i] === 'p2';
+    html += '<div class="input-cell ' + (isPg2 ? 'pg2' : '') + '">' +
+      '<label>' + (i+1) + '. ' + c.labels[i] + '</label>' +
+      '<input type="number" min="0" value="' + vals[i] + '" data-index="' + i + '" oninput="handleInput(this)">' +
+      '</div>';
+  }
+  document.getElementById('input-grid').innerHTML = html;
+}
+
+function handleInput(el) {
+  const v = parseInt(el.value);
+  if (!isNaN(v) && v >= 0) {
+    state[currentView][parseInt(el.dataset.index)] = v;
+    renderAll();
+  }
+}
+
+function rate(view) {
+  const v = state[view];
+  return v[0] === 0 ? 0 : (v[v.length-1] / v[0]) * 100;
+}
+
+function renderAll() {
+  const cr = rate('control'), vr = rate('variant');
+  const diff = (vr - cr).toFixed(1);
+  const tc = document.getElementById('tag-control');
+  const tv = document.getElementById('tag-variant');
+  if (cr >= vr) {
+    tc.textContent = 'winner'; tc.style.cssText = 'background:var(--accent-control-light);color:var(--accent-control)';
+    tv.textContent = diff + 'pp'; tv.style.cssText = 'background:var(--accent-warn-light);color:var(--accent-warn)';
+  } else {
+    tv.textContent = 'winner'; tv.style.cssText = 'background:var(--accent-control-light);color:var(--accent-control)';
+    tc.textContent = (-diff) + 'pp'; tc.style.cssText = 'background:var(--accent-warn-light);color:var(--accent-warn)';
+  }
+
+  const vals = state[currentView];
+  const start = vals[0], end = vals[vals.length-1];
+  const compRate = start === 0 ? '0.0' : ((end/start)*100).toFixed(1);
+  const lost = start - end;
+  const abandon = start === 0 ? '0.0' : ((lost/start)*100).toFixed(1);
+  let maxDrop = 0, maxStep = '';
+  for (let i = 1; i < vals.length; i++) {
+    const d = vals[i-1] - vals[i];
+    if (d > maxDrop) { maxDrop = d; maxStep = config[currentView].labels[i]; }
+  }
+  const isWinner = rate(currentView) >= rate(currentView === 'control' ? 'variant' : 'control');
+  document.getElementById('metrics').innerHTML =
+    '<div class="metric"><div class="metric-label">completion</div><div class="metric-value ' + (isWinner?'good':'') + '">' + compRate + '%</div><div class="metric-sub">' + end.toLocaleString() + ' of ' + start.toLocaleString() + ' submitted</div></div>' +
+    '<div class="metric"><div class="metric-label">abandoned</div><div class="metric-value bad">' + lost.toLocaleString() + '</div><div class="metric-sub">' + abandon + '% total drop-off</div></div>' +
+    '<div class="metric"><div class="metric-label">biggest leak</div><div class="metric-value bad">' + (maxDrop > 0 ? '-'+maxDrop : '0') + '</div><div class="metric-sub">' + (maxStep ? 'at '+maxStep : 'none') + '</div></div>';
+
+  renderChart();
+  renderTable();
+}
+
+function renderChart() {
+  const c = config[currentView], vals = state[currentView];
+  const labels = c.labels.map((l,i) => (i+1)+'. '+l);
+  let bgColors, borderColors;
+  if (currentView === 'control') {
+    const bg = isDark ? '#0F6E56' : '#E1F5EE', bd = isDark ? '#5DCAA5' : '#1D9E75';
+    bgColors = vals.map(() => bg); borderColors = vals.map(() => bd);
+  } else {
+    const p1b = isDark ? '#185FA5' : '#E6F1FB', p1d = isDark ? '#85B7EB' : '#3B8BD4';
+    const p2b = isDark ? '#854F0B' : '#FAEEDA', p2d = '#EF9F27';
+    bgColors = c.sections.map(s => s==='p2' ? p2b : p1b);
+    borderColors = c.sections.map(s => s==='p2' ? p2d : p1d);
+  }
+  const mx = Math.max(...vals, 10);
+  const yMax = Math.ceil(mx*1.1/50)*50;
+  const yMin = Math.max(0, Math.floor(Math.min(...vals)*0.8/50)*50);
+
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('funnelChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: vals, backgroundColor: bgColors, borderColor: borderColors, borderWidth: 1.5, borderRadius: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 400, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          titleFont: { family: 'DM Sans' }, bodyFont: { family: 'DM Mono', size: 12 },
+          callbacks: {
+            afterLabel: (ctx) => {
+              const i = ctx.dataIndex;
+              if (i === 0) return 'Funnel entry';
+              const drop = vals[i-1] - vals[i];
+              const pct = vals[i-1] === 0 ? '0.0' : ((drop/vals[i-1])*100).toFixed(1);
+              return drop + ' lost from prev (' + pct + '%)';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: { size: 11, family: 'DM Sans' }, color: isDark ? '#6B6A65' : '#9C9A92' }, grid: { display: false } },
+        y: { min: yMin, max: yMax, ticks: { color: isDark ? '#6B6A65' : '#9C9A92', font: { size: 11, family: 'DM Mono' } }, grid: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' } }
+      }
+    }
+  });
+
+  const leg = document.getElementById('legend');
+  if (currentView === 'variant') {
+    const s1 = isDark ? '#185FA5' : '#85B7EB', s2 = isDark ? '#854F0B' : '#EF9F27';
+    leg.innerHTML = '<span><span class="swatch" style="background:'+s1+'"></span>Page 1</span><span><span class="swatch" style="background:'+s2+'"></span>Page 2</span>';
+  } else leg.innerHTML = '';
+}
+
+function renderTable() {
+  const c = config[currentView], vals = state[currentView];
+  document.getElementById('table-sub').textContent = currentView === 'control' ? 'single page' : '2-page progressive';
+  const drops = [];
+  for (let i = 1; i < vals.length; i++) drops.push(vals[i-1] - vals[i]);
+  const maxDrop = Math.max(...drops, 1);
+  let html = '';
+  for (let i = 1; i < vals.length; i++) {
+    const drop = vals[i-1] - vals[i];
+    const pct = vals[i-1] === 0 ? '0.0' : ((drop/vals[i-1])*100).toFixed(1);
+    const isCrit = drop >= 30;
+    const cls = isCrit ? 'critical' : 'normal-drop';
+    const barW = Math.max(2, (Math.abs(drop)/maxDrop)*100);
+    html += '<div class="drop-row"><span class="label">' + c.labels[i-1] + ' → ' + c.labels[i] + '</span>' +
+      '<span class="num ' + cls + '">' + (drop >= 0 ? '-' : '+') + Math.abs(drop) + '</span>' +
+      '<span class="pct ' + cls + '">' + pct + '%</span>' +
+      '<div class="bar-track"><div class="bar-fill ' + (isCrit?'critical':'normal') + '" style="width:' + Math.max(0,barW) + '%"></div></div></div>';
+  }
+  document.getElementById('dropoff-table').innerHTML = html;
+}
+
+switchView('control');
+</script>
+</body>
+</html>

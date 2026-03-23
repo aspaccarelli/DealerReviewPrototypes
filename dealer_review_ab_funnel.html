@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dealer Review Funnel — A/B Test Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF8;
+    --surface: #F1EFE8;
+    --card: #FFFFFF;
+    --text: #1C1C1A;
+    --text-secondary: #6B6A65;
+    --text-tertiary: #9C9A92;
+    --border: rgba(0,0,0,0.08);
+    --accent-control: #0F6E56;
+    --accent-control-light: #E1F5EE;
+    --accent-control-mid: #5DCAA5;
+    --accent-variant: #185FA5;
+    --accent-variant-light: #E6F1FB;
+    --accent-variant-mid: #85B7EB;
+    --accent-variant-warn: #EF9F27;
+    --accent-variant-warn-light: #FAEEDA;
+    --danger: #A32D2D;
+    --danger-bar: #F09595;
+    --neutral-bar: #D3D1C7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413;
+      --surface: #1E1E1C;
+      --card: #242422;
+      --text: #E8E6DE;
+      --text-secondary: #A8A69E;
+      --text-tertiary: #6B6A65;
+      --border: rgba(255,255,255,0.08);
+      --accent-control: #5DCAA5;
+      --accent-control-light: #0F6E56;
+      --accent-control-mid: #1D9E75;
+      --accent-variant: #85B7EB;
+      --accent-variant-light: #0C447C;
+      --accent-variant-mid: #378ADD;
+      --accent-variant-warn: #EF9F27;
+      --accent-variant-warn-light: #854F0B;
+      --danger: #F09595;
+      --danger-bar: #E24B4A;
+      --neutral-bar: #5F5E5A;
+    }
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header { margin-bottom: 2rem; }
+  .header h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .header p { font-size: 13px; color: var(--text-tertiary); font-family: 'DM Mono', monospace; }
+
+  /* Toggle */
+  .toggle-bar {
+    display: flex;
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+  .toggle-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: color 0.25s, background 0.25s;
+    position: relative;
+    z-index: 1;
+  }
+  .toggle-btn.active {
+    background: var(--card);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .toggle-btn .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+  .toggle-btn .tag.winner { background: var(--accent-control-light); color: var(--accent-control); }
+  .toggle-btn .tag.loser { background: var(--accent-variant-warn-light); color: var(--accent-variant-warn); }
+
+  /* Metrics */
+  .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .metric {
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .metric-label { font-size: 12px; color: var(--text-tertiary); font-family: 'DM Mono', monospace; margin-bottom: 4px; }
+  .metric-value { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+  .metric-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .metric-value.good { color: var(--accent-control); }
+  .metric-value.bad { color: var(--danger); }
+
+  /* Chart */
+  .chart-wrap {
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 16px 12px;
+    margin-bottom: 1.5rem;
+  }
+  .chart-container { position: relative; width: 100%; height: 340px; }
+
+  /* Table */
+  .table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .table-title { font-size: 14px; font-weight: 600; }
+  .table-subtitle { font-size: 12px; color: var(--text-tertiary); font-family: 'DM Mono', monospace; }
+  .drop-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) 46px 46px minmax(0, 0.8fr);
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 13px;
+  }
+  .drop-row:last-child { border-bottom: none; }
+  .drop-row .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .drop-row .num { text-align: right; font-weight: 500; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .drop-row .pct { text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .drop-row .critical .num, .drop-row .critical .pct { color: var(--danger); }
+  .bar-track { height: 6px; border-radius: 3px; background: var(--surface); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .bar-fill.critical { background: var(--danger-bar); }
+  .bar-fill.normal { background: var(--neutral-bar); }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary); }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Dealer review form — A/B funnel</h1>
+  <p>Progressive disclosure (2-page) vs single-page control</p>
+</div>
+
+<div class="toggle-bar">
+  <button class="toggle-btn active" onclick="switchView('control')">
+    Control (single page) <span class="tag winner">winner</span>
+  </button>
+  <button class="toggle-btn" onclick="switchView('variant')">
+    Variant (2-page) <span class="tag loser">-6.2pp</span>
+  </button>
+</div>
+
+<div class="metrics" id="metrics"></div>
+
+<div class="chart-wrap">
+  <div class="legend" id="legend"></div>
+  <div class="chart-container">
+    <canvas id="funnelChart"></canvas>
+  </div>
+</div>
+
+<div class="table-header">
+  <span class="table-title">Step-by-step drop-off</span>
+  <span class="table-subtitle" id="table-sub"></span>
+</div>
+<div id="dropoff-table"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+
+const data = {
+  control: {
+    steps: [
+      { label: 'Car available', value: 392 },
+      { label: 'Rating start', value: 385 },
+      { label: 'Communication', value: 381 },
+      { label: 'Price transparency', value: 364 },
+      { label: 'Condition accuracy', value: 358 },
+      { label: 'Staff helpfulness', value: 364 },
+      { label: 'Time at dealership', value: 355 },
+      { label: 'Financing', value: 352 },
+      { label: 'Selling/trade-in', value: 348 },
+      { label: 'Submit', value: 290 }
+    ],
+    barBg: isDark ? '#0F6E56' : '#E1F5EE',
+    barBorder: isDark ? '#5DCAA5' : '#1D9E75',
+  },
+  variant: {
+    steps: [
+      { label: 'Rating start', value: 401, section: 'page1' },
+      { label: 'Communication', value: 396, section: 'page1' },
+      { label: 'Price transparency', value: 389, section: 'page1' },
+      { label: 'Condition accuracy', value: 376, section: 'page1' },
+      { label: 'Staff helpfulness', value: 380, section: 'page1' },
+      { label: 'Time at dealership', value: 373, section: 'page1' },
+      { label: 'Financing', value: 371, section: 'page1' },
+      { label: 'Selling/trade-in', value: 370, section: 'page1' },
+      { label: 'Car available (pg 2)', value: 326, section: 'transition' },
+      { label: 'Submit', value: 272, section: 'page2' }
+    ]
+  }
+};
+
+let chart = null;
+let currentView = 'control';
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.toggle-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', (i === 0 && view === 'control') || (i === 1 && view === 'variant'));
+  });
+  renderMetrics();
+  renderChart();
+  renderTable();
+}
+
+function renderMetrics() {
+  const s = data[currentView].steps;
+  const start = s[0].value;
+  const end = s[s.length - 1].value;
+  const rate = ((end / start) * 100).toFixed(1);
+  const lost = start - end;
+  const abandon = ((lost / start) * 100).toFixed(1);
+  let maxDrop = 0, maxStep = '';
+  for (let i = 1; i < s.length; i++) {
+    const d = s[i-1].value - s[i].value;
+    if (d > maxDrop) { maxDrop = d; maxStep = s[i].label; }
+  }
+  const maxPct = ((maxDrop / (s.find((_, i) => i < s.length - 1 && s[i].value - s[i+1].value === maxDrop) || s[0]).value) * 100).toFixed(1);
+
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">completion</div>
+      <div class="metric-value ${currentView === 'control' ? 'good' : ''}">${rate}%</div>
+      <div class="metric-sub">${end} of ${start} submitted</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">abandoned</div>
+      <div class="metric-value bad">${lost}</div>
+      <div class="metric-sub">${abandon}% total drop-off</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">biggest leak</div>
+      <div class="metric-value bad">-${maxDrop}</div>
+      <div class="metric-sub">at ${maxStep}</div>
+    </div>
+  `;
+}
+
+function renderChart() {
+  const s = data[currentView].steps;
+  const labels = s.map((st, i) => (i + 1) + '. ' + st.label);
+
+  let bgColors, borderColors;
+  if (currentView === 'control') {
+    bgColors = s.map(() => data.control.barBg);
+    borderColors = s.map(() => data.control.barBorder);
+  } else {
+    const pg1Bg = isDark ? '#185FA5' : '#E6F1FB';
+    const pg1Border = isDark ? '#85B7EB' : '#3B8BD4';
+    const pg2Bg = isDark ? '#854F0B' : '#FAEEDA';
+    const pg2Border = '#EF9F27';
+    bgColors = s.map(st => (st.section === 'transition' || st.section === 'page2') ? pg2Bg : pg1Bg);
+    borderColors = s.map(st => (st.section === 'transition' || st.section === 'page2') ? pg2Border : pg1Border);
+  }
+
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('funnelChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: s.map(st => st.value),
+        backgroundColor: bgColors,
+        borderColor: borderColors,
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 500, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          titleFont: { family: 'DM Sans' },
+          bodyFont: { family: 'DM Mono', size: 12 },
+          callbacks: {
+            afterLabel: (ctx) => {
+              const i = ctx.dataIndex;
+              if (i === 0) return 'Funnel entry';
+              const prev = s[i-1].value;
+              const curr = s[i].value;
+              const drop = prev - curr;
+              const pct = ((drop / prev) * 100).toFixed(1);
+              return drop + ' lost from prev (' + pct + '%)';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: { size: 11, family: 'DM Sans' }, color: isDark ? '#6B6A65' : '#9C9A92' },
+          grid: { display: false }
+        },
+        y: {
+          min: 200, max: 420,
+          ticks: { color: isDark ? '#6B6A65' : '#9C9A92', font: { size: 11, family: 'DM Mono' } },
+          grid: { color: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }
+        }
+      }
+    }
+  });
+
+  const legendEl = document.getElementById('legend');
+  if (currentView === 'variant') {
+    const pg1Bg = isDark ? '#185FA5' : '#85B7EB';
+    const pg2Bg = isDark ? '#854F0B' : '#EF9F27';
+    legendEl.innerHTML = `
+      <span><span class="swatch" style="background:${pg1Bg}"></span>Page 1</span>
+      <span><span class="swatch" style="background:${pg2Bg}"></span>Page 2</span>
+    `;
+  } else {
+    legendEl.innerHTML = '';
+  }
+}
+
+function renderTable() {
+  const s = data[currentView].steps;
+  const maxDrop = Math.max(...s.slice(1).map((st, i) => s[i].value - st.value));
+  document.getElementById('table-sub').textContent = currentView === 'control' ? 'single page' : '2-page progressive';
+
+  let html = '';
+  for (let i = 1; i < s.length; i++) {
+    const prev = s[i-1].value;
+    const curr = s[i].value;
+    const drop = prev - curr;
+    const pct = ((drop / prev) * 100).toFixed(1);
+    const isCrit = drop >= 30;
+    const cls = isCrit ? 'critical' : 'normal';
+    const barW = Math.max(2, (drop / maxDrop) * 100);
+    html += `<div class="drop-row">
+      <span class="label">${s[i-1].label} → ${s[i].label}</span>
+      <span class="num ${cls}">-${drop}</span>
+      <span class="pct ${cls}">${pct}%</span>
+      <div class="bar-track"><div class="bar-fill ${cls}" style="width:${barW}%"></div></div>
+    </div>`;
+  }
+  document.getElementById('dropoff-table').innerHTML = html;
+}
+
+switchView('control');
+</script>
+</body>
+</html>
